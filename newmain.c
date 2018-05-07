@@ -59,11 +59,16 @@
 #pragma config EBTRB = OFF      // Boot Block Table Read Protection bit (Boot block (000000-0007FFh) not protected from table reads executed in other blocks)
 
 #include <xc.h>
+#include <stdint.h>
 #include <usart.h>
+#include <stdio.h>
 
 #define _XTAL_FREQ 4000000
 
 void main(void) {
+    uint32_t addr = 0;
+    char buf[256];
+    
     OpenUSART(USART_TX_INT_OFF &
             USART_RX_INT_OFF &
             USART_ASYNCH_MODE &
@@ -71,15 +76,37 @@ void main(void) {
             USART_CONT_RX &
             USART_BRGH_HIGH,
             1);
-    while (1) {
-        putsUSART("Hello\r\n");
-        __delay_ms(1);
-    }
+    
+    putsUSART("Hello\r\n");
     
     TRISB |= 1 << 3;
+    // Go to listen-only mode
+    CANCON = 3 << 4;
+    // Want 33.3kbaud.  4000000/33333 = 120, and 59+1*2 = 120;
+    BRGCON1 = 59;
+
+    // Put the transceiver in normal mode
+    TRISA &= ~(1 << 6);
+    TRISA &= ~(1 << 7);
+    PORTA |= 1 << 6;
+    PORTA |= 1 << 7;
     
-    while(!(RXB0CON & RXB0FUL)) {
-        Delay1TCY();
+    while (1) {
+        while(!(RXB0CON & RXB0FUL)) {
+            Delay1TCY();
+        }
+        addr = RXB0SIDH << 8;
+        addr |= RXB0SIDL;
+        if (addr & 0x0008) {
+            addr &= ~0x0008;
+            addr <<= 16;
+            addr |= RXB0EIDH << 8;
+            addr |= RXB0EIDL;
+        }
+        sprintf(buf, "%08x\n", addr);
+        putsUSART(buf);
+        RXB0CON &= ~RXB0FUL;
     }
+    
     return;
 }
