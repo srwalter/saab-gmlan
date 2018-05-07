@@ -90,8 +90,37 @@ void handle_message(uint32_t addr) {
     }
 }
 
-void main(void) {
+void high_priority interrupt main_irq (void) {
     uint32_t addr = 0;
+    
+    if (PIR3bits.RXB0IF) {
+        if (RXB0FUL) {
+            addr = RXB0SIDH;
+            addr <<= 8;
+            addr |= RXB0SIDL;
+            if (addr & 0x8) {
+                addr &= ~0x0018;
+                addr <<= 8;
+                addr |= RXB0EIDH;
+                addr <<= 8;
+                addr |= RXB0EIDL;
+            }
+#if 0
+            sprintf(buf, "%02x %02x %02x %02x\r\n", RXB0SIDH, RXB0SIDL, RXB0EIDH, RXB0EIDL);
+            putsUSART(buf);
+            sprintf(buf, "%08lx\r\n", addr);
+            putsUSART(buf);
+#endif
+            handle_message(addr);
+            RXB0FUL = 0;
+        }
+
+        // Clear the interrupt
+        PIR3bits.RXB0IF = 0;
+    }
+}
+
+void main(void) {
     int i=0;
     
     // 9600 baud for UART
@@ -155,42 +184,22 @@ void main(void) {
         Delay1TCY();
     }
     putsUSART("Listening\r\n");
+
+    // Make CAN-receive HIPRI
+    IPR3bits.RXB0IP = 1;
+    // Enable CAN-receive interrupts
+    PIE3bits.RXB0IE = 1;
+    // Enable interrupt priorities
+    RCONbits.IPEN = 1;
+    // Enable peripheral interrupts
+    INTCONbits.PEIE = 1;
+    // Enable global interrupts
+    INTCONbits.GIEH = 1;
     
+    // Keep peripherals running during sleep
+    OSCCONbits.IDLEN = 1;
     while (1) {
-        i=0;
-        while(!RXB0FUL) {
-#if 0
-            i++;
-            if (i == 1000) {
-                sprintf(buf, "%02x\r\n", PIR3);
-                putsUSART(buf);
-                sprintf(buf, "%02x\r\n", COMSTAT);
-                putsUSART(buf);
-                sprintf(buf, "%02x\r\n", RXERRCNT);
-                putsUSART(buf);
-                i=0;
-            }
-            __delay_ms(1);
-#endif
-        }
-        addr = RXB0SIDH;
-        addr <<= 8;
-        addr |= RXB0SIDL;
-        if (addr & 0x8) {
-            addr &= ~0x0018;
-            addr <<= 8;
-            addr |= RXB0EIDH;
-            addr <<= 8;
-            addr |= RXB0EIDL;
-        }
-#if 0
-        sprintf(buf, "%02x %02x %02x %02x\r\n", RXB0SIDH, RXB0SIDL, RXB0EIDH, RXB0EIDL);
-        putsUSART(buf);
-        sprintf(buf, "%08lx\r\n", addr);
-        putsUSART(buf);
-#endif
-        handle_message(addr);
-        RXB0FUL = 0;
+        //SLEEP();
     }
     
     return;
