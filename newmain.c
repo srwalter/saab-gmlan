@@ -78,8 +78,8 @@ char buf[256];
 void handle_message(uint32_t addr) {
     switch (addr) {
         case 0x80002045:
-            sprintf(buf, "data = 0x%x\r\n", RXB0D0);
-            putsUSART(buf);
+            //sprintf(buf, "data = 0x%x\r\n", RXB0D0);
+            //putsUSART(buf);
             if (RXB0D0 == 0x00) {
                 acc_off();
             }
@@ -103,7 +103,7 @@ void main(void) {
             USART_BRGH_HIGH,
             25);
     
-    printf("Hello\r\n");
+    putsUSART("Hello\r\n");
     __delay_ms(1000);
     putsUSART("Hello 2\r\n");
     
@@ -159,6 +159,7 @@ void main(void) {
     while (1) {
         i=0;
         while(!RXB0FUL) {
+#if 0
             i++;
             if (i == 1000) {
                 sprintf(buf, "%02x\r\n", PIR3);
@@ -170,6 +171,7 @@ void main(void) {
                 i=0;
             }
             __delay_ms(1);
+#endif
         }
         addr = RXB0SIDH;
         addr <<= 8;
@@ -181,10 +183,12 @@ void main(void) {
             addr <<= 8;
             addr |= RXB0EIDL;
         }
+#if 0
         sprintf(buf, "%02x %02x %02x %02x\r\n", RXB0SIDH, RXB0SIDL, RXB0EIDH, RXB0EIDL);
         putsUSART(buf);
         sprintf(buf, "%08lx\r\n", addr);
         putsUSART(buf);
+#endif
         handle_message(addr);
         RXB0FUL = 0;
     }
