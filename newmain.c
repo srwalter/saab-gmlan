@@ -69,15 +69,19 @@ void main(void) {
     uint32_t addr = 0;
     char buf[256];
     
+    // 9600 baud for UART
     OpenUSART(USART_TX_INT_OFF &
             USART_RX_INT_OFF &
             USART_ASYNCH_MODE &
             USART_EIGHT_BIT &
             USART_CONT_RX &
             USART_BRGH_HIGH,
-            1);
+            25);
     
     putsUSART("Hello\r\n");
+    
+    TRISA &= ~(1 << 2);
+    LATA |= 1 << 2;
     
     TRISB |= 1 << 3;
     // Go to listen-only mode
@@ -86,15 +90,16 @@ void main(void) {
     BRGCON1 = 59;
 
     // Put the transceiver in normal mode
-    TRISA &= ~(1 << 6);
-    TRISA &= ~(1 << 7);
-    PORTA |= 1 << 6;
-    PORTA |= 1 << 7;
+    TRISA &= ~(1 << 4);
+    TRISA &= ~(1 << 5);
+    LATA |= 1 << 4;
+    LATA |= 1 << 5;
     
     while (1) {
         while(!(RXB0CON & RXB0FUL)) {
             Delay1TCY();
         }
+        LATA ^= 1 << 2;
         addr = RXB0SIDH << 8;
         addr |= RXB0SIDL;
         if (addr & 0x0008) {
