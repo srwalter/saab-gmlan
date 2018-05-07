@@ -84,7 +84,7 @@ void main(void) {
     LATA |= 1 << 2;
     
     TRISB &= ~(1 << 2);
-    TRISB |= 1 << 3;
+    TRISB &= ~(1 << 3);
     
     CANCON |= (4 << 5);
     while ((CANSTAT >> 5) != 4) {
@@ -94,6 +94,25 @@ void main(void) {
     
     // Receive all messages
     RXB0CON |= 3 << 5;
+        
+    // Want 33.3kbaud.  4000000/33333 = 120, and 59+1*2 = 120;
+    BRGCON1 = 59;
+    BRGCON2 = 0xb8;
+    BRGCON3 = 0x05;
+
+    // Put the transceiver in normal mode
+    TRISA &= ~(1 << 4);
+    TRISA &= ~(1 << 5);
+    LATA |= 1 << 4;
+    LATA |= 1 << 5;
+    
+    // Accept all messages
+    RXM0SIDH = 0;
+    RXM0SIDL = 0;
+    RXM0EIDH = 0;
+    RXM1EIDH = 0;
+    RXM0EIDL = 0;
+    RXM1EIDL = 0;
     
     // Go to listen-only mode
     CANCON = 3 << 5;
@@ -101,15 +120,6 @@ void main(void) {
         Delay1TCY();
     }
     putsUSART("Listening\n");
-    
-    // Want 33.3kbaud.  4000000/33333 = 120, and 59+1*2 = 120;
-    BRGCON1 = 59;
-
-    // Put the transceiver in normal mode
-    TRISA &= ~(1 << 4);
-    TRISA &= ~(1 << 5);
-    LATA |= 1 << 4;
-    LATA |= 1 << 5;
     
     while (1) {
         while(!(RXB0CON & RXB0FUL)) {
