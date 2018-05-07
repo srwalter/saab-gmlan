@@ -68,6 +68,7 @@
 void main(void) {
     uint32_t addr = 0;
     char buf[256];
+    int i=0;
     
     // 9600 baud for UART
     OpenUSART(USART_TX_INT_OFF &
@@ -79,6 +80,8 @@ void main(void) {
             25);
     
     putsUSART("Hello\r\n");
+    __delay_ms(1000);
+    putsUSART("Hello 2\r\n");
     
     // Turn on LED
     TRISA &= ~(1 << 1);
@@ -101,7 +104,7 @@ void main(void) {
     // Nominal Bit Rate = 1/33333 = 30uS/bit
     // T_Q = 30uS / 15 Q = 2uS
     // BRP = (Fosc * T_Q / 2) - 1 = (4 * 2 / 2) - 1 = 3
-    BRGCON1 = 3; // Sync = 1 T_Q
+    BRGCON1 = 3; // SJW = 1 T_Q BRP = 3
     BRGCON2 = 0; // Propagation = 1 T_Q
     BRGCON2 |= 6 << 3; // Phase 1 = 7 T_Q
     BRGCON2 |= 1 << 6;
@@ -129,14 +132,20 @@ void main(void) {
     }
     putsUSART("Listening\r\n");
     
-    __delay_ms(5000);
-    
-    sprintf(buf, "%02x\r\n", PIR3);
-    putsUSART(buf);
-    
     while (1) {
-        while(!(RXB0CON & RXB0FUL)) {
-            Delay1TCY();
+        i=0;
+        while(!RXB0FUL) {
+            i++;
+            if (i == 1000) {
+                sprintf(buf, "%02x\r\n", PIR3);
+                putsUSART(buf);
+                sprintf(buf, "%02x\r\n", COMSTAT);
+                putsUSART(buf);
+                sprintf(buf, "%02x\r\n", RXERRCNT);
+                putsUSART(buf);
+                i=0;
+            }
+            __delay_ms(1);
         }
         LATA ^= 1 << 1;
         addr = RXB0SIDH << 8;
@@ -149,7 +158,7 @@ void main(void) {
         }
         sprintf(buf, "%08x\r\n", addr);
         putsUSART(buf);
-        RXB0CON &= ~RXB0FUL;
+        RXB0FUL = 0;
     }
     
     return;
