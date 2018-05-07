@@ -80,9 +80,11 @@ void main(void) {
     
     putsUSART("Hello\r\n");
     
-    TRISA &= ~(1 << 2);
-    LATA |= 1 << 2;
+    // Turn on LED
+    TRISA &= ~(1 << 1);
+    LATA |= 1 << 1;
     
+    // Don't tristate CAN pins
     TRISB &= ~(1 << 2);
     TRISB &= ~(1 << 3);
     
@@ -95,10 +97,16 @@ void main(void) {
     // Receive all messages
     RXB0CON |= 3 << 5;
         
-    // Want 33.3kbaud.  4000000/33333 = 120, and 59+1*2 = 120;
-    BRGCON1 = 59;
-    BRGCON2 = 0xb8;
-    BRGCON3 = 0x05;
+    // Want 33333kbaud 
+    // Nominal Bit Rate = 1/33333 = 30uS/bit
+    // T_Q = 30uS / 15 Q = 2uS
+    // BRP = (Fosc * T_Q / 2) - 1 = (4 * 2 / 2) - 1 = 3
+    BRGCON1 = 3; // Sync = 1 T_Q
+    BRGCON2 = 0; // Propogation = 1 T_Q
+    BRGCON2 |= 6 << 3; // Phase 1 = 7 T_Q
+    BRGCON2 |= 1 << 6;
+    BRGCON2 |= 1 << 7;
+    BRGCON3 = 0x05; // Phase 2 = 6 T_Q
 
     // Put the transceiver in normal mode
     TRISA &= ~(1 << 4);
@@ -125,7 +133,7 @@ void main(void) {
         while(!(RXB0CON & RXB0FUL)) {
             Delay1TCY();
         }
-        LATA ^= 1 << 2;
+        LATA ^= 1 << 1;
         addr = RXB0SIDH << 8;
         addr |= RXB0SIDL;
         if (addr & 0x0008) {
