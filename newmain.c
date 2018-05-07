@@ -83,9 +83,25 @@ void main(void) {
     TRISA &= ~(1 << 2);
     LATA |= 1 << 2;
     
+    TRISB &= ~(1 << 2);
     TRISB |= 1 << 3;
+    
+    CANCON |= (4 << 5);
+    while ((CANSTAT >> 5) != 4) {
+        Delay1TCY();
+    }
+    putsUSART("Config mode\n");
+    
+    // Receive all messages
+    RXB0CON |= 3 << 5;
+    
     // Go to listen-only mode
-    CANCON = 3 << 4;
+    CANCON = 3 << 5;
+    while ((CANSTAT >> 5) != 3) {
+        Delay1TCY();
+    }
+    putsUSART("Listening\n");
+    
     // Want 33.3kbaud.  4000000/33333 = 120, and 59+1*2 = 120;
     BRGCON1 = 59;
 
