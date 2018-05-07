@@ -65,9 +65,33 @@
 
 #define _XTAL_FREQ 4000000
 
+void acc_on(void) {
+    LATA |= 1 << 1;
+}
+
+void acc_off(void) {
+    LATA &= ~(1 << 1);
+}
+
+char buf[256];
+
+void handle_message(uint32_t addr) {
+    switch (addr) {
+        case 0x80002045:
+            sprintf(buf, "data = 0x%x\r\n", RXB0D0);
+            putsUSART(buf);
+            if (RXB0D0 == 0x00) {
+                acc_off();
+            }
+            if (RXB0D0 >= 0x05) {
+                acc_on();
+            }
+            break;
+    }
+}
+
 void main(void) {
     uint32_t addr = 0;
-    char buf[256];
     int i=0;
     
     // 9600 baud for UART
@@ -79,13 +103,13 @@ void main(void) {
             USART_BRGH_HIGH,
             25);
     
-    putsUSART("Hello\r\n");
+    printf("Hello\r\n");
     __delay_ms(1000);
     putsUSART("Hello 2\r\n");
     
-    // Turn on LED
+    // Turn ACC off
     TRISA &= ~(1 << 1);
-    LATA |= 1 << 1;
+    acc_off();
     
     // Set tristate for CAN pins
     TRISB &= ~(1 << 2);
@@ -147,17 +171,21 @@ void main(void) {
             }
             __delay_ms(1);
         }
-        LATA ^= 1 << 1;
-        addr = RXB0SIDH << 8;
+        addr = RXB0SIDH;
+        addr <<= 8;
         addr |= RXB0SIDL;
-        if (addr & 0x0008) {
-            addr &= ~0x0008;
-            addr <<= 16;
-            addr |= RXB0EIDH << 8;
+        if (addr & 0x8) {
+            addr &= ~0x0018;
+            addr <<= 8;
+            addr |= RXB0EIDH;
+            addr <<= 8;
             addr |= RXB0EIDL;
         }
-        sprintf(buf, "%08x\r\n", addr);
+        sprintf(buf, "%02x %02x %02x %02x\r\n", RXB0SIDH, RXB0SIDL, RXB0EIDH, RXB0EIDL);
         putsUSART(buf);
+        sprintf(buf, "%08lx\r\n", addr);
+        putsUSART(buf);
+        handle_message(addr);
         RXB0FUL = 0;
     }
     
