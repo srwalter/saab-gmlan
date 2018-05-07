@@ -65,12 +65,22 @@
 
 #define _XTAL_FREQ 4000000
 
+#define CAN_MODE_LISTEN (0x03)
+#define CAN_MODE_CONFIG (0x04)
+
+void switch_can_mode(char mode) {
+    CANCON = (mode << _CANCON_REQOP0_POSN);
+    while ((CANSTAT >> _CANSTAT_OPMODE0_POSN) != mode) {
+        Delay1TCY();
+    }
+}
+
 void acc_on(void) {
-    LATA |= 1 << 1;
+    LATAbits.LA1 = 1;
 }
 
 void acc_off(void) {
-    LATA &= ~(1 << 1);
+    LATAbits.LA1 = 0;
 }
 
 char buf[256];
@@ -94,7 +104,7 @@ void high_priority interrupt main_irq (void) {
     uint32_t addr = 0;
     
     if (PIR3bits.RXB0IF) {
-        if (RXB0FUL) {
+        if (RXB0CONbits.RXFUL) {
             addr = RXB0SIDH;
             addr <<= 8;
             addr |= RXB0SIDL;
@@ -112,7 +122,7 @@ void high_priority interrupt main_irq (void) {
             putsUSART(buf);
 #endif
             handle_message(addr);
-            RXB0FUL = 0;
+            RXB0CONbits.RXFUL = 0;
         }
 
         // Clear the interrupt
@@ -137,21 +147,22 @@ void main(void) {
     putsUSART("Hello 2\r\n");
     
     // Turn ACC off
-    TRISA &= ~(1 << 1);
     acc_off();
+    TRISAbits.RA1 = 0;
     
     // Set tristate for CAN pins
-    TRISB &= ~(1 << 2);
-    TRISB |= 1 << 3;
+    // XXX: do this at another point?  Perhaps go operational, set tris, and enable phy last?
+    TRISBbits.RB2 = 0;
+    TRISBbits.RB3 = 1;
     
-    CANCON |= (4 << 5);
-    while ((CANSTAT >> 5) != 4) {
-        Delay1TCY();
-    }
+    // Ensure we're in CAN config mode
+    switch_can_mode(CAN_MODE_CONFIG);
     putsUSART("Config mode\r\n");
     
     // Receive all messages
-    RXB0CON |= 3 << 5;
+    // XXX: try without this
+    RXB0CONbits.RXM0 = 1;
+    RXB0CONbits.RXM1 = 1;
         
     // Want 33333kbaud 
     // Nominal Bit Rate = 1/33333 = 30uS/bit
@@ -165,10 +176,10 @@ void main(void) {
     BRGCON3 = 0x05; // Phase 2 = 6 T_Q
 
     // Put the transceiver in normal mode
-    TRISA &= ~(1 << 4);
-    TRISA &= ~(1 << 5);
-    LATA |= 1 << 4;
-    LATA |= 1 << 5;
+    LATAbits.LA4 = 1;
+    LATAbits.LA5 = 1;
+    TRISAbits.RA4 = 0;
+    TRISAbits.RA5 = 0;
     
     // Accept all messages
     RXM0SIDH = 0;
@@ -179,10 +190,7 @@ void main(void) {
     RXM1EIDL = 0;
     
     // Go to listen-only mode
-    CANCON = 3 << 5;
-    while ((CANSTAT >> 5) != 3) {
-        Delay1TCY();
-    }
+    switch_can_mode(CAN_MODE_LISTEN);
     putsUSART("Listening\r\n");
 
     // Make CAN-receive HIPRI
@@ -199,6 +207,7 @@ void main(void) {
     // Keep peripherals running during sleep
     OSCCONbits.IDLEN = 1;
     while (1) {
+        // XXX
         //SLEEP();
     }
     
