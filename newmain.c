@@ -84,15 +84,15 @@ void main(void) {
     TRISA &= ~(1 << 1);
     LATA |= 1 << 1;
     
-    // Don't tristate CAN pins
+    // Set tristate for CAN pins
     TRISB &= ~(1 << 2);
-    TRISB &= ~(1 << 3);
+    TRISB |= 1 << 3;
     
     CANCON |= (4 << 5);
     while ((CANSTAT >> 5) != 4) {
         Delay1TCY();
     }
-    putsUSART("Config mode\n");
+    putsUSART("Config mode\r\n");
     
     // Receive all messages
     RXB0CON |= 3 << 5;
@@ -102,7 +102,7 @@ void main(void) {
     // T_Q = 30uS / 15 Q = 2uS
     // BRP = (Fosc * T_Q / 2) - 1 = (4 * 2 / 2) - 1 = 3
     BRGCON1 = 3; // Sync = 1 T_Q
-    BRGCON2 = 0; // Propogation = 1 T_Q
+    BRGCON2 = 0; // Propagation = 1 T_Q
     BRGCON2 |= 6 << 3; // Phase 1 = 7 T_Q
     BRGCON2 |= 1 << 6;
     BRGCON2 |= 1 << 7;
@@ -127,7 +127,12 @@ void main(void) {
     while ((CANSTAT >> 5) != 3) {
         Delay1TCY();
     }
-    putsUSART("Listening\n");
+    putsUSART("Listening\r\n");
+    
+    __delay_ms(5000);
+    
+    sprintf(buf, "%02x\r\n", PIR3);
+    putsUSART(buf);
     
     while (1) {
         while(!(RXB0CON & RXB0FUL)) {
@@ -142,7 +147,7 @@ void main(void) {
             addr |= RXB0EIDH << 8;
             addr |= RXB0EIDL;
         }
-        sprintf(buf, "%08x\n", addr);
+        sprintf(buf, "%08x\r\n", addr);
         putsUSART(buf);
         RXB0CON &= ~RXB0FUL;
     }
