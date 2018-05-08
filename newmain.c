@@ -207,8 +207,7 @@ void main(void) {
     // Keep peripherals running during sleep
     OSCCONbits.IDLEN = 1;
     while (1) {
-        // XXX
-        //SLEEP();
+        SLEEP();
     }
     
     return;
