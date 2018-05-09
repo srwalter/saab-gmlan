@@ -70,6 +70,7 @@
 
 void switch_can_mode(char mode) {
     CANCON = (mode << _CANCON_REQOP0_POSN);
+    // XXX: apply mask?
     while ((CANSTAT >> _CANSTAT_OPMODE0_POSN) != mode) {
         Delay1TCY();
     }
@@ -83,18 +84,30 @@ void acc_off(void) {
     LATAbits.LA1 = 0;
 }
 
+void reverse_on(void) {
+}
+
+void reverse_off(void) {
+}
+
 char buf[256];
 
 void handle_message(uint32_t addr) {
     switch (addr) {
         case 0x80002045:
-            //sprintf(buf, "data = 0x%x\r\n", RXB0D0);
-            //putsUSART(buf);
             if (RXB0D0 == 0x00) {
                 acc_off();
             }
             if (RXB0D0 >= 0x05) {
                 acc_on();
+            }
+            break;
+            
+        case 0x81228045:
+            if (RXB0D0 == 0x90) {
+                reverse_on();
+            } else {
+                reverse_off();
             }
             break;
     }
@@ -116,8 +129,6 @@ void high_priority interrupt main_irq (void) {
                 addr |= RXB0EIDL;
             }
 #if 0
-            sprintf(buf, "%02x %02x %02x %02x\r\n", RXB0SIDH, RXB0SIDL, RXB0EIDH, RXB0EIDL);
-            putsUSART(buf);
             sprintf(buf, "%08lx\r\n", addr);
             putsUSART(buf);
 #endif
@@ -148,11 +159,10 @@ void main(void) {
     
     // Turn ACC off
     acc_off();
+    reverse_off();
     TRISAbits.RA1 = 0;
     
-    // Set tristate for CAN pins
-    // XXX: do this at another point?  Perhaps go operational, set tris, and enable phy last?
-    TRISBbits.RB2 = 0;
+    // TRISB<3> (CANRX) must be enabled for CAN operation
     TRISBbits.RB3 = 1;
     
     // Ensure we're in CAN config mode
@@ -174,12 +184,6 @@ void main(void) {
     BRGCON2 |= 1 << 6;
     BRGCON2 |= 1 << 7;
     BRGCON3 = 0x05; // Phase 2 = 6 T_Q
-
-    // Put the transceiver in normal mode
-    LATAbits.LA4 = 1;
-    LATAbits.LA5 = 1;
-    TRISAbits.RA4 = 0;
-    TRISAbits.RA5 = 0;
     
     // Accept all messages
     RXM0SIDH = 0;
@@ -188,10 +192,20 @@ void main(void) {
     RXM1EIDH = 0;
     RXM0EIDL = 0;
     RXM1EIDL = 0;
+
+    // Filter 0 will accept standard messages and Filter 1 will accept extended messages
+    RXF0SIDLbits.EXIDEN = 0;
+    RXF1SIDLbits.EXIDEN = 1;
     
     // Go to listen-only mode
     switch_can_mode(CAN_MODE_LISTEN);
     putsUSART("Listening\r\n");
+
+    // Put the transceiver in normal mode
+    LATAbits.LA4 = 1;
+    LATAbits.LA5 = 1;
+    TRISAbits.RA4 = 0;
+    TRISAbits.RA5 = 0;
 
     // Make CAN-receive HIPRI
     IPR3bits.RXB0IP = 1;
