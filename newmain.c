@@ -168,12 +168,7 @@ void main(void) {
     // Ensure we're in CAN config mode
     switch_can_mode(CAN_MODE_CONFIG);
     putsUSART("Config mode\r\n");
-    
-    // Receive all messages
-    // XXX: try without this
-    RXB0CONbits.RXM0 = 1;
-    RXB0CONbits.RXM1 = 1;
-        
+       
     // Want 33333kbaud 
     // Nominal Bit Rate = 1/33333 = 30uS/bit
     // T_Q = 30uS / 15 Q = 2uS
