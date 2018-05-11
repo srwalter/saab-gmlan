@@ -153,9 +153,9 @@ void main(void) {
             USART_BRGH_HIGH,
             25);
     
-    putsUSART("Hello\r\n");
+    //putsUSART("Hello\r\n");
     __delay_ms(1000);
-    putsUSART("Hello 2\r\n");
+    //putsUSART("Hello 2\r\n");
     
     // Turn ACC off
     acc_off();
@@ -167,7 +167,7 @@ void main(void) {
     
     // Ensure we're in CAN config mode
     switch_can_mode(CAN_MODE_CONFIG);
-    putsUSART("Config mode\r\n");
+    //putsUSART("Config mode\r\n");
        
     // Want 33333kbaud 
     // Nominal Bit Rate = 1/33333 = 30uS/bit
@@ -194,7 +194,7 @@ void main(void) {
     
     // Go to listen-only mode
     switch_can_mode(CAN_MODE_LISTEN);
-    putsUSART("Listening\r\n");
+    //putsUSART("Listening\r\n");
 
     // Put the transceiver in normal mode
     LATAbits.LA4 = 1;
