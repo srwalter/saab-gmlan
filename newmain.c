@@ -110,6 +110,10 @@ void handle_message(uint32_t addr) {
                 reverse_off();
             }
             break;
+            
+        case 0x80610045:
+            putcUSART (RXB0D0);
+            break;
     }
 }
 
